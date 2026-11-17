@@ -1,0 +1,258 @@
+/* ==========================================================================
+   국립공원 로드킬 공간 분석 및 야생동물 보호 지원 AI 대시보드 스타일시트
+   ========================================================================== */
+
+/* 웹 폰트 우선순위 설정 */
+body {
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Noto Sans KR', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: -0.015em;
+}
+
+/* 스크롤바 커스텀 */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ==========================================================================
+   Leaflet 지도 커스텀 마커 및 팝업 스타일
+   ========================================================================== */
+
+/* 지도 컨테이너 포커스 아웃라인 제거 */
+.leaflet-container {
+  font-family: inherit !important;
+  outline: none;
+}
+
+/* 커스텀 중심점(Centroid) 핀 마커 컨테이너 */
+.custom-centroid-marker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.centroid-pin {
+  width: 32px;
+  height: 32px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 11px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  border: 2px solid #ffffff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.centroid-pin-inner {
+  transform: rotate(45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.centroid-pin:hover {
+  transform: rotate(-45deg) scale(1.15);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.5);
+}
+
+/* 중심점 펄스 애니메이션 */
+.centroid-pulse {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  opacity: 0.8;
+  animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.8;
+  }
+  70% {
+    transform: scale(1.4);
+    opacity: 0.15;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+/* 중심점 하단 미니 라벨 배지 (한눈에 확인) */
+.centroid-badge-label {
+  position: absolute;
+  top: 34px;
+  white-space: nowrap;
+  background: rgba(15, 23, 42, 0.9);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  border: 1.5px solid #ffffff;
+  pointer-events: none;
+  z-index: 3;
+  letter-spacing: -0.02em;
+}
+
+/* Leaflet 레이어 컨트롤 커스텀 스타일 */
+.leaflet-control-layers {
+  border-radius: 10px !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(4px);
+  padding: 8px 12px !important;
+  font-size: 12px !important;
+}
+
+.leaflet-control-layers-base label,
+.leaflet-control-layers-overlays label {
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.leaflet-control-layers-separator {
+  margin: 6px 0 !important;
+  border-top: 1px solid #e2e8f0 !important;
+}
+
+/* Leaflet 팝업 스타일 커스터마이징 */
+.leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid #e2e8f0;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.4 !important;
+  min-width: 210px;
+}
+
+.leaflet-popup-tip-container {
+  margin-top: -1px;
+}
+
+/* 팝업 내부 카드 */
+.popup-card {
+  padding: 12px 14px;
+  background: #ffffff;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.popup-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.popup-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.popup-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #64748b;
+  margin-bottom: 3px;
+}
+
+.popup-row strong {
+  color: #334155;
+  font-weight: 600;
+}
+
+/* 중심점 전용 팝업 */
+.centroid-popup-card {
+  padding: 12px 14px;
+  background: linear-gradient(to bottom, #f8fafc, #ffffff);
+}
+
+/* 범례 아이템 상호작용 */
+.legend-item {
+  transition: all 0.18s ease-in-out;
+  cursor: pointer;
+  user-select: none;
+}
+
+.legend-item:hover {
+  background-color: #f1f5f9;
+  transform: translateX(2px);
+}
+
+.legend-item.active {
+  background-color: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+/* 슬라이더 스타일 */
+input[type=range] {
+  accent-color: #059669;
+}
+
+/* 알림 애니메이션 */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}

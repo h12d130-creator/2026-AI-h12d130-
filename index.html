@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>국립공원 로드킬 위험 구간 분석 및 야생동물 보호 지원 AI</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Leaflet CSS CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- Google Fonts: Pretendard / Noto Sans KR -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- 1. Header -->
+  <header class="bg-gradient-to-r from-emerald-950 via-emerald-800 to-slate-900 text-white shadow-lg sticky top-0 z-50">
+    <div class="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3.5">
+        <div class="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 text-2xl shadow-inner">
+          <i class="fa-solid fa-paw"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              국립공원 로드킬 위험 구간 분석 및 야생동물 보호 지원 AI
+            </h1>
+            <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              K-Means AI
+            </span>
+          </div>
+          <p class="text-xs text-emerald-200/80 mt-0.5">
+            순수 웹 기술 기반 공간 군집화 및 배경지도(위성·일반 도로 지도) 연계 야생동물 보전 지원 대시보드
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div id="dataStatusBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-700/50 text-xs text-emerald-200">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="dataStatusText">데이터 로딩 준비 중...</span>
+        </div>
+        <button id="resetViewBtn" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-600/50 text-xs text-slate-200 transition flex items-center gap-1.5 shadow-sm">
+          <i class="fa-solid fa-arrows-rotate"></i>
+          <span>지도 화면 초기화</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 2. AI Ethics & Disclaimer Banner (필수 표시 문구) -->
+  <section class="bg-amber-50 border-b border-amber-200/80 text-amber-900 px-4 sm:px-6 lg:px-8 py-2.5 shadow-sm">
+    <div class="max-w-[1700px] mx-auto flex items-start gap-3">
+      <div class="text-amber-600 text-lg flex-shrink-0 mt-0.5">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <div class="text-xs sm:text-sm font-medium leading-relaxed">
+        ※ 본 프로그램은 로드킬 기록의 공간적 분포를 파악하여 추가 조사가 필요한 '후보 지역'을 찾는 참고 도구입니다. 군집으로 묶인 지역이 실제 로드킬 위험도를 확정적으로 의미하지 않으며, 현장 조사 및 전문가의 판단을 대체할 수 없습니다.
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Main Dashboard Body -->
+  <main class="max-w-[1700px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-5 flex-1 flex flex-col gap-5">
+    
+    <!-- Top Layout: Sidebar (Controls) + Main Display (KPIs & Map) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      
+      <!-- Left Sidebar: Controls & Legend (Col 4 on LG, Col 3 on XL) -->
+      <aside class="lg:col-span-4 xl:col-span-3 flex flex-col gap-4">
+        
+        <!-- Control Card 1: Data Filter -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 transition-all hover:shadow-md">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+            <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-sliders text-emerald-600"></i>
+              분석 파라미터 제어
+            </h2>
+            <span class="text-[11px] text-slate-600 font-medium bg-slate-100 px-2 py-0.5 rounded">컨트롤 패널</span>
+          </div>
+
+          <!-- 국립공원 선택 드롭다운 -->
+          <div class="mb-4">
+            <label for="parkSelect" class="block text-xs font-semibold text-slate-700 mb-1.5">
+              <i class="fa-solid fa-mountain-sun text-emerald-600 mr-1"></i> 국립공원 선택
+            </label>
+            <div class="relative">
+              <select id="parkSelect" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2.5 text-slate-800 font-medium focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition appearance-none cursor-pointer">
+                <option value="ALL">전체 국립공원 (전국)</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                <i class="fa-solid fa-chevron-down text-xs"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- 군집 개수(K) 슬라이더 -->
+          <div class="mb-4">
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="kSlider" class="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                <i class="fa-solid fa-diagram-project text-emerald-600 mr-1"></i> 군집 개수 (K) 설정
+              </label>
+              <span id="kValueBadge" class="text-xs font-bold text-white bg-emerald-600 px-2.5 py-0.5 rounded-full shadow-sm">
+                K = 5
+              </span>
+            </div>
+            <input 
+              type="range" 
+              id="kSlider" 
+              min="2" 
+              max="15" 
+              value="5" 
+              step="1"
+              class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+            >
+            <div class="flex justify-between text-[11px] text-slate-600 mt-1 font-semibold">
+              <span>최소 2</span>
+              <span>기본 5</span>
+              <span>10</span>
+              <span>최대 15</span>
+            </div>
+          </div>
+
+          <!-- 재계산 버튼 -->
+          <button id="runClusterBtn" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg text-xs font-bold tracking-wide transition flex items-center justify-center gap-2 shadow-sm">
+            <i class="fa-solid fa-play"></i>
+            <span>군집 분석(K-Means++) 즉시 재계산</span>
+          </button>
+        </div>
+
+        <!-- Control Card 2: Custom CSV File Input (보조 기능) -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 transition-all hover:shadow-md">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100 mb-2.5">
+            <h3 class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <i class="fa-solid fa-file-csv text-blue-600"></i>
+              보조 CSV 파일 직접 업로드
+            </h3>
+            <span class="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 font-semibold">EUC-KR 지원</span>
+          </div>
+          <p class="text-[11px] text-slate-500 mb-2 leading-relaxed">
+            기본 제공 데이터 외에 사용자가 보유한 다른 로드킬 CSV 파일을 불러와 분석할 수 있습니다.
+          </p>
+          <label class="flex flex-col items-center justify-center w-full px-3 py-3 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition group">
+            <div class="flex items-center space-x-2 text-slate-500 group-hover:text-emerald-600 transition">
+              <i class="fa-solid fa-cloud-arrow-up text-base"></i>
+              <span id="uploadStatusText" class="text-xs font-medium truncate max-w-[180px]">다른 CSV 파일 선택</span>
+            </div>
+            <input type="file" id="csvFileInput" accept=".csv" class="hidden">
+          </label>
+        </div>
+
+        <!-- Control Card 3: Cluster Legend & Statistics -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex-1 flex flex-col transition-all hover:shadow-md">
+          <div class="flex items-center justify-between pb-2.5 border-b border-slate-100 mb-2.5">
+            <h3 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-nodes text-purple-600"></i>
+              군집(Cluster) 요약 및 범례
+            </h3>
+            <span id="clusterCountTag" class="text-[11px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded font-bold border border-purple-100">
+              5개 군집
+            </span>
+          </div>
+          <p class="text-[10px] text-slate-400 mb-2">클릭 시 해당 군집 중심점으로 지도가 이동합니다.</p>
+          <div id="clusterLegendList" class="space-y-1.5 overflow-y-auto max-h-[300px] pr-1 scrollbar-thin">
+            <!-- Dynamically populated cluster items -->
+            <div class="text-xs text-slate-400 py-3 text-center">군집 분석 중...</div>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- Right Main: KPI Cards & Interactive Map (Col 8 on LG, Col 9 on XL) -->
+      <section class="lg:col-span-8 xl:col-span-9 flex flex-col gap-4">
+        
+        <!-- KPI Cards (3 Cards) -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          
+          <!-- KPI 1: Total Records -->
+          <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 flex items-center justify-between">
+            <div>
+              <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">선택 조건 전체 기록 수</p>
+              <h3 id="kpiTotalRecords" class="text-2xl font-black text-slate-800 mt-1">0 <span class="text-xs font-normal text-slate-500">건</span></h3>
+              <p id="kpiScopeText" class="text-[11px] text-emerald-600 font-medium mt-0.5">전국 20개 국립공원</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-database"></i>
+            </div>
+          </div>
+
+          <!-- KPI 2: Number of Clusters (K) -->
+          <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 flex items-center justify-between">
+            <div>
+              <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">설정된 군집 수 (K)</p>
+              <h3 id="kpiClusterK" class="text-2xl font-black text-slate-800 mt-1">5 <span class="text-xs font-normal text-slate-500">개 구역</span></h3>
+              <p class="text-[11px] text-purple-600 font-medium mt-0.5">K-Means++ 중심점 도출</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-shapes"></i>
+            </div>
+          </div>
+
+          <!-- KPI 3: Max Density Cluster -->
+          <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 flex items-center justify-between">
+            <div>
+              <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">최다 밀집 발생 군집</p>
+              <h3 id="kpiTopCluster" class="text-2xl font-black text-rose-600 mt-1">-</h3>
+              <p id="kpiTopClusterInfo" class="text-[11px] text-rose-500 font-medium mt-0.5">최다 빈도 사고 구역</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-fire"></i>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Interactive Map Container -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+          <!-- Map Header / Toolbar -->
+          <div class="px-4 py-2.5 bg-slate-50/90 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <i class="fa-solid fa-map-location-dot text-emerald-600"></i>
+                로드킬 공간 분포 및 중심점 지도 (다중 배경지도 지원)
+              </span>
+              <span class="text-[11px] text-slate-500 font-normal hidden sm:inline">
+                • 우측 상단 레이어 컨트롤로 위성 지도와 일반 도로 지도 전환 가능
+              </span>
+            </div>
+
+            <!-- Map Controls -->
+            <div class="flex items-center gap-2 text-xs">
+              <button id="fitMapBtn" class="px-2.5 py-1 text-[11px] bg-white border border-slate-300 rounded hover:bg-slate-100 text-slate-700 font-medium transition shadow-2xs flex items-center gap-1">
+                <i class="fa-solid fa-expand text-[10px]"></i> 전체 영역 맞춤
+              </button>
+            </div>
+          </div>
+
+          <!-- Leaflet Map Mount Point -->
+          <div class="relative w-full h-[540px] bg-slate-100">
+            <div id="map" class="w-full h-full z-10"></div>
+            
+            <!-- Loading Overlay -->
+            <div id="mapLoading" class="absolute inset-0 bg-white/80 backdrop-blur-xs flex flex-col items-center justify-center z-20 transition-opacity duration-300">
+              <div class="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+              <p class="mt-3 text-xs font-bold text-slate-700">공간 데이터 로드 및 K-Means 군집 계산 중...</p>
+            </div>
+
+            <!-- Empty / Error Notification -->
+            <div id="mapAlert" class="hidden absolute top-4 left-1/2 -translate-x-1/2 bg-amber-500/95 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-lg z-30 flex items-center gap-2">
+              <i class="fa-solid fa-circle-exclamation"></i>
+              <span id="mapAlertText">데이터 개수가 설정된 군집 수(K)보다 적습니다.</span>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+
+    <!-- Bottom Layout: 4 Interactive Analytics Charts (2x2 Grid) -->
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      
+      <!-- Chart 1: 군집별 로드킬 기록 수 비교 -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 transition-all hover:shadow-md">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-100 mb-3">
+          <h3 class="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-chart-column text-emerald-600"></i>
+            군집별 로드킬 기록 수 비교
+          </h3>
+          <span class="text-[11px] text-slate-600 font-semibold bg-slate-100 px-2 py-0.5 rounded">내림차순 정렬</span>
+        </div>
+        <p class="text-[11px] text-slate-500 mb-2">
+          각 군집에 할당된 사고 건수를 비교합니다. 막대 색상은 지도 마커 색상과 1:1로 일치합니다.
+        </p>
+        <div class="h-64 relative">
+          <canvas id="clusterBarChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 2: 국립공원별 로드킬 발생 건수 -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 transition-all hover:shadow-md">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-100 mb-3">
+          <h3 class="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-mountain text-teal-600"></i>
+            국립공원별 로드킬 발생 건수
+          </h3>
+          <span class="text-[11px] text-slate-600 font-semibold bg-slate-100 px-2 py-0.5 rounded">내림차순</span>
+        </div>
+        <p class="text-[11px] text-slate-500 mb-2">
+          선택된 조건에서 국립공원별 로드킬 누적 발생 수치입니다.
+        </p>
+        <div class="h-64 relative">
+          <canvas id="parkBarChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 3: 주요 피해 야생동물(자원명) TOP 10 -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 transition-all hover:shadow-md">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-100 mb-3">
+          <h3 class="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-otter text-amber-600"></i>
+            주요 피해 야생동물(자원명) TOP 10
+          </h3>
+          <span class="text-[11px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded">상위 10종</span>
+        </div>
+        <p class="text-[11px] text-slate-500 mb-2">
+          선택된 조건에서 로드킬 피해가 가장 빈번한 야생동물 상위 10종입니다.
+        </p>
+        <div class="h-64 relative">
+          <canvas id="animalBarChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 4: 조사일자(연도/월별) 로드킬 발생 추이 -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 transition-all hover:shadow-md">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-100 mb-3">
+          <h3 class="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-blue-600"></i>
+            조사일자별 로드킬 발생 추이
+          </h3>
+          <div class="flex items-center gap-1">
+            <button id="trendPeriodYearBtn" class="text-[10px] px-2 py-0.5 rounded font-semibold bg-blue-600 text-white transition">연도별</button>
+            <button id="trendPeriodMonthBtn" class="text-[10px] px-2 py-0.5 rounded font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">월별 계절 추이</button>
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-500 mb-2">
+          시간 흐름에 따른 로드킬 발생 추세를 분석합니다. (버튼으로 연도별/월별 집계 전환)
+        </p>
+        <div class="h-64 relative">
+          <canvas id="trendLineChart"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- 4. Footer -->
+  <footer class="bg-slate-900 text-slate-400 border-t border-slate-800 py-4 px-4 sm:px-6 lg:px-8 text-xs text-center mt-6">
+    <div class="max-w-[1700px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>© 2026 국립공원 로드킬 공간 분석 및 야생동물 보호 지원 AI 시스템</p>
+      <p class="text-slate-500">데이터 출처: 공공데이터포털(국립공원공단 로드킬 정보) | 분석 엔진: 클라이언트 사이드 K-Means++ Clustering</p>
+    </div>
+  </footer>
+
+  <!-- External Libraries (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
